@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { RABResult } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, Legend } from 'recharts';
 import { Download, RefreshCw, Loader2 } from 'lucide-react';
@@ -19,7 +19,23 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6'];
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#8B5CF6', '#0EA5E9', '#D946EF'];
+
+// Helper untuk mengkonversi Romawi ke Angka untuk sorting
+const getRomanValue = (str: string): number => {
+  // Ambil kata pertama yang diakhiri titik, misal "IV." dari "IV. Pekerjaan Dinding"
+  const match = str.match(/^([XIV]+)\./); 
+  if (!match) return 999; // Jika tidak ada romawi, taruh di akhir
+  
+  const roman = match[1];
+  const map: Record<string, number> = {
+    'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5,
+    'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10,
+    'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15
+  };
+  
+  return map[roman] || 999;
+};
 
 // Komponen Custom untuk Render Bagian Tengah & Efek Hover
 const renderActiveShape = (props: any) => {
@@ -68,11 +84,20 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Derived calculations
-  const constructionCost = result.categories.reduce((acc, curr) => acc + curr.subtotal, 0);
+  // LOGIKA SORTING: Mengurutkan kategori berdasarkan angka Romawi (I, II, III...)
+  // Menggunakan useMemo agar tidak dihitung ulang setiap render kecuali data berubah
+  const sortedCategories = useMemo(() => {
+    return [...result.categories].sort((a, b) => {
+      return getRomanValue(a.categoryName) - getRomanValue(b.categoryName);
+    });
+  }, [result.categories]);
+
+  // Derived calculations based on SORTED categories
+  const constructionCost = sortedCategories.reduce((acc, curr) => acc + curr.subtotal, 0);
   const ppnAmount = result.grandTotal - constructionCost;
   
-  const chartData = result.categories.map(cat => ({
+  // Gunakan sortedCategories untuk Chart agar urutannya sesuai Tabel
+  const chartData = sortedCategories.map(cat => ({
     name: cat.categoryName,
     value: cat.subtotal
   }));
@@ -118,7 +143,8 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
       // --- Data Table ---
       const tableBody: any[] = [];
 
-      result.categories.forEach((cat) => {
+      // Gunakan sortedCategories agar PDF juga urut
+      sortedCategories.forEach((cat) => {
         // Row Header Kategori (Bold & Grey Background)
         tableBody.push([
           { 
@@ -267,7 +293,8 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {result.categories.map((category, catIndex) => (
+              {/* RENDER MENGGUNAKAN SORTED CATEGORIES */}
+              {sortedCategories.map((category, catIndex) => (
                 <React.Fragment key={catIndex}>
                   <tr className="bg-slate-50">
                     <td colSpan={5} className="px-4 py-2 font-bold text-slate-700 text-xs uppercase">
@@ -310,7 +337,6 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
       </div>
 
       {/* Chart Section - INTERAKTIF & DI BAWAH */}
-      {/* PERBAIKAN: Menambahkan pt-8 dan WebkitTapHighlightColor untuk menghilangkan kotak fokus mobile */}
       <div 
         className="bg-white p-6 pt-8 rounded-xl border border-slate-200 shadow-sm flex flex-col" 
         style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} 
@@ -344,7 +370,7 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
               </Pie>
               
               <Legend 
-                onClick={(e) => setActiveIndex(e.index)} // Alternatif button tooltip: Klik Legend
+                onClick={(e) => setActiveIndex(e.index)} // Support Click Legend
                 onMouseEnter={(_, index) => setActiveIndex(index)} 
                 layout="horizontal" 
                 verticalAlign="bottom" 
