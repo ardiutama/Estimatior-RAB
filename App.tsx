@@ -4,21 +4,29 @@ import { InputForm } from './components/InputForm';
 import { RABResultView } from './components/RABResult';
 import { ProjectDetails, RABResult } from './types';
 import { generateRABEstimate } from './services/geminiService';
-import { AlertCircle, Info } from 'lucide-react';
+import { AlertCircle, Info, Key } from 'lucide-react';
 
 function App() {
   const [result, setResult] = useState<RABResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userApiKey, setUserApiKey] = useState('');
 
   const handleFormSubmit = async (details: ProjectDetails) => {
+    if (!userApiKey && !process.env.API_KEY) {
+       setError("API Key wajib diisi. Harap masukkan Google Gemini API Key Anda pada kolom di atas.");
+       window.scrollTo({ top: 0, behavior: 'smooth' });
+       return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      const data = await generateRABEstimate(details);
+      const data = await generateRABEstimate(details, userApiKey);
       setResult(data);
-    } catch (err) {
-      setError("Gagal menghasilkan estimasi RAB. Pastikan API Key valid atau coba lagi nanti.");
+    } catch (err: any) {
+      const errorMessage = err?.message || "Gagal menghasilkan estimasi RAB. Pastikan API Key valid.";
+      setError(errorMessage);
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -49,8 +57,29 @@ function App() {
           </div>
         )}
 
+        {/* API KEY INPUT SECTION */}
+        {!result && (
+          <div className="mb-8 bg-white p-4 rounded-xl border border-slate-200 shadow-sm max-w-3xl mx-auto">
+            <div className="flex items-center gap-2 mb-2">
+                <Key className="w-4 h-4 text-blue-600" />
+                <label className="text-sm font-semibold text-slate-700">Google Gemini API Key</label>
+            </div>
+            <input 
+                type="password" 
+                value={userApiKey}
+                onChange={(e) => setUserApiKey(e.target.value)}
+                placeholder="Masukkan API Key Anda (AI Studio)..."
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-slate-800 text-sm"
+            />
+            <p className="text-xs text-slate-400 mt-2">
+                *API Key Anda aman dan hanya digunakan untuk sesi ini (tidak disimpan di server kami). 
+                Dapatkan key gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Google AI Studio</a>.
+            </p>
+          </div>
+        )}
+
         {error && (
-          <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 text-red-700">
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 text-red-700 max-w-3xl mx-auto">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <div>
               <h4 className="font-bold">Terjadi Kesalahan</h4>

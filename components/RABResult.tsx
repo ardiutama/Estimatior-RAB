@@ -215,12 +215,13 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
                 onMouseEnter={(_, index) => setActiveIndex(index)} 
                 layout="horizontal" 
                 verticalAlign="bottom" 
-                align="center"
+                align="left" // ALIGN LEFT SEKARANG (SESUAI PERMINTAAN)
                 wrapperStyle={{ 
                   fontSize: '11px', 
                   paddingTop: '24px', 
                   borderTop: '1px solid #f1f5f9',
-                  marginTop: '20px'
+                  marginTop: '20px',
+                  textAlign: 'left' // Ensure text alignment is left
                 }} 
                 iconSize={12}
                 iconType="circle"
