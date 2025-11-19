@@ -1,0 +1,5 @@
+{
+  "name": "AutoRAB - Estimator Biaya Bangunan AI",
+  "description": "Aplikasi otomatisasi pembuatan Rencana Anggaran Biaya (RAB) bangunan menggunakan AI untuk estimasi material dan upah.",
+  "requestFramePermissions": []
+}
