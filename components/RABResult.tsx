@@ -1,7 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { RABResult } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, Legend } from 'recharts';
-import { Download, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw, Loader2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface RABResultViewProps {
   result: RABResult;
@@ -64,6 +66,7 @@ const renderActiveShape = (props: any) => {
 
 export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset }) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const onPieEnter = useCallback((_: any, index: number) => {
     setActiveIndex(index);
@@ -76,6 +79,123 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
 
   const constructionCost = result.categories.reduce((acc, cat) => acc + cat.subtotal, 0);
   const ppnAmount = result.grandTotal - constructionCost;
+
+  const handleDownloadPDF = () => {
+    setIsDownloading(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      // --- Header ---
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(30, 41, 59); // Slate-800
+      doc.text("RENCANA ANGGARAN BIAYA (RAB)", pageWidth / 2, 20, { align: "center" });
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139); // Slate-500
+      doc.text(`Estimasi Proyek Konstruksi • Dibuat: ${today}`, pageWidth / 2, 26, { align: "center" });
+
+      // --- Summary Box ---
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, 35, pageWidth - 28, 25, 3, 3, "FD");
+
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text("Estimasi Waktu:", 20, 45);
+      doc.text("Total Biaya (Est):", pageWidth - 80, 45);
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 41, 59);
+      doc.text(result.estimatedDuration, 20, 52);
+      doc.text(formatCurrency(result.grandTotal), pageWidth - 80, 52);
+
+      // --- Data Table ---
+      const tableBody: any[] = [];
+
+      result.categories.forEach((cat) => {
+        // Row Header Kategori (Bold & Grey Background)
+        tableBody.push([
+          { 
+            content: cat.categoryName, 
+            colSpan: 5, 
+            styles: { fontStyle: 'bold', fillColor: [241, 245, 249], textColor: [51, 65, 85] } 
+          }
+        ]);
+
+        // Row Items
+        cat.items.forEach((item) => {
+          tableBody.push([
+            item.description,
+            { content: item.unit, styles: { halign: 'center' } },
+            { content: item.volume.toString(), styles: { halign: 'right' } },
+            { content: formatCurrency(item.unitPrice), styles: { halign: 'right' } },
+            { content: formatCurrency(item.totalPrice), styles: { halign: 'right' } },
+          ]);
+        });
+
+        // Row Subtotal Kategori
+        tableBody.push([
+          { content: 'Subtotal', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
+          { content: formatCurrency(cat.subtotal), styles: { halign: 'right', fontStyle: 'bold' } },
+        ]);
+      });
+
+      // Footer Rows (Biaya Fisik, PPN, Grand Total)
+      tableBody.push(
+        [
+          { content: 'Biaya Konstruksi Fisik', colSpan: 4, styles: { halign: 'right' } },
+          { content: formatCurrency(constructionCost), styles: { halign: 'right' } }
+        ],
+        [
+          { content: 'PPN 11%', colSpan: 4, styles: { halign: 'right' } },
+          { content: formatCurrency(ppnAmount), styles: { halign: 'right' } }
+        ],
+        [
+          { content: 'GRAND TOTAL ESTIMASI', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', fillColor: [248, 250, 252], textColor: [15, 23, 42], fontSize: 11 } },
+          { content: formatCurrency(result.grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: [248, 250, 252], textColor: [15, 23, 42], fontSize: 11 } }
+        ]
+      );
+
+      autoTable(doc, {
+        startY: 70,
+        head: [['Uraian Pekerjaan', 'Sat', 'Vol', 'Harga Satuan', 'Jumlah Harga']],
+        body: tableBody,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' }, // Blue Header
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 15 },
+          2: { cellWidth: 20 },
+          3: { cellWidth: 35 },
+          4: { cellWidth: 35 },
+        },
+        margin: { top: 70 },
+        didDrawPage: (data) => {
+           // Footer Disclaimer pada setiap halaman
+           const pageHeight = doc.internal.pageSize.height;
+           doc.setFontSize(8);
+           doc.setTextColor(148, 163, 184);
+           doc.setFont("helvetica", "italic");
+           doc.text("*Dokumen ini adalah estimasi awal (Owner Estimate) berbasis AI dan acuan SNI/AHSP. Tidak mengikat secara hukum.", 14, pageHeight - 10);
+        }
+      });
+
+      // Save PDF
+      doc.save(`RAB_Estimasi_${new Date().getTime()}.pdf`);
+
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      alert("Gagal membuat PDF. Silakan coba lagi.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12 text-slate-800">
@@ -124,8 +244,13 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <h4 className="font-semibold text-slate-800">Rincian Anggaran Biaya</h4>
-          <button className="text-xs bg-white border border-slate-300 text-slate-600 px-3 py-1.5 rounded hover:bg-slate-50 flex items-center gap-1 transition-colors">
-             <Download className="w-3 h-3" /> PDF
+          <button 
+            onClick={handleDownloadPDF}
+            disabled={isDownloading}
+            className="text-xs bg-blue-50 border border-blue-200 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-100 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          >
+             {isDownloading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+             {isDownloading ? 'Memproses...' : 'Download PDF'}
           </button>
         </div>
         
@@ -215,13 +340,13 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
                 onMouseEnter={(_, index) => setActiveIndex(index)} 
                 layout="horizontal" 
                 verticalAlign="bottom" 
-                align="left" // ALIGN LEFT SEKARANG (SESUAI PERMINTAAN)
+                align="left" 
                 wrapperStyle={{ 
                   fontSize: '11px', 
                   paddingTop: '24px', 
                   borderTop: '1px solid #f1f5f9',
                   marginTop: '20px',
-                  textAlign: 'left' // Ensure text alignment is left
+                  textAlign: 'left' 
                 }} 
                 iconSize={12}
                 iconType="circle"
