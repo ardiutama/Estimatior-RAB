@@ -47,10 +47,21 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'landArea' || name === 'buildingArea' || name === 'floors' ? Number(value) : value
-    }));
+    
+    // PERBAIKAN: Logika khusus untuk input angka
+    // Jika value kosong string "", set state ke 0.
+    // Ini memungkinkan user menghapus semua angka di field.
+    if (name === 'landArea' || name === 'buildingArea' || name === 'floors') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value === '' ? 0 : parseFloat(value)
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const addSuggestion = (text: string) => {
@@ -117,10 +128,11 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
             <input
               type="number"
               name="landArea"
-              min="1"
+              min="0"
               required
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-slate-800"
-              value={formData.landArea}
+              // PERBAIKAN: Jika nilai 0, render string kosong '' agar bisa di-backspace
+              value={formData.landArea || ''}
               onChange={handleChange}
             />
           </div>
@@ -130,10 +142,11 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
             <input
               type="number"
               name="buildingArea"
-              min="1"
+              min="0"
               required
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-slate-800"
-              value={formData.buildingArea}
+              // PERBAIKAN
+              value={formData.buildingArea || ''}
               onChange={handleChange}
             />
           </div>
@@ -147,7 +160,8 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
               max="10"
               required
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-slate-800"
-              value={formData.floors}
+              // PERBAIKAN
+              value={formData.floors || ''}
               onChange={handleChange}
             />
           </div>

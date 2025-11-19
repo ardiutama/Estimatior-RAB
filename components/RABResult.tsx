@@ -68,17 +68,18 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // Derived calculations
+  const constructionCost = result.categories.reduce((acc, curr) => acc + curr.subtotal, 0);
+  const ppnAmount = result.grandTotal - constructionCost;
+  
+  const chartData = result.categories.map(cat => ({
+    name: cat.categoryName,
+    value: cat.subtotal
+  }));
+
   const onPieEnter = useCallback((_: any, index: number) => {
     setActiveIndex(index);
   }, []);
-
-  const chartData = result.categories.map((cat) => ({
-    name: cat.categoryName,
-    value: cat.subtotal,
-  }));
-
-  const constructionCost = result.categories.reduce((acc, cat) => acc + cat.subtotal, 0);
-  const ppnAmount = result.grandTotal - constructionCost;
 
   const handleDownloadPDF = () => {
     setIsDownloading(true);
@@ -309,15 +310,19 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
       </div>
 
       {/* Chart Section - INTERAKTIF & DI BAWAH */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+      {/* PERBAIKAN: Menambahkan pt-8 dan WebkitTapHighlightColor untuk menghilangkan kotak fokus mobile */}
+      <div 
+        className="bg-white p-6 pt-8 rounded-xl border border-slate-200 shadow-sm flex flex-col" 
+        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} 
+      >
         <div className="mb-2 text-center">
           <h4 className="font-bold text-slate-800">Proporsi Biaya Pekerjaan</h4>
-          <p className="text-xs text-slate-400 mt-1">Arahkan kursor ke grafik atau legenda untuk melihat detail</p>
+          <p className="text-xs text-slate-400 mt-1">Arahkan kursor atau klik legenda untuk melihat detail</p>
         </div>
         
-        <div className="w-full h-[450px]">
+        <div className="w-full h-[450px] mt-4">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ top: 0, left: 0, right: 0, bottom: 0 }}>
+            <PieChart margin={{ top: 0, left: 0, right: 0, bottom: 0 }} style={{ outline: 'none' }}>
               <Pie
                 activeIndex={activeIndex}
                 activeShape={renderActiveShape}
@@ -329,14 +334,17 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
                 paddingAngle={3}
                 dataKey="value"
                 onMouseEnter={onPieEnter}
+                onClick={(_, index) => setActiveIndex(index)} // Support Tap on Pie
                 animationDuration={800}
+                style={{ outline: 'none', cursor: 'pointer' }}
               >
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} style={{ outline: 'none' }} />
                 ))}
               </Pie>
               
               <Legend 
+                onClick={(e) => setActiveIndex(e.index)} // Alternatif button tooltip: Klik Legend
                 onMouseEnter={(_, index) => setActiveIndex(index)} 
                 layout="horizontal" 
                 verticalAlign="bottom" 
@@ -346,11 +354,13 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
                   paddingTop: '24px', 
                   borderTop: '1px solid #f1f5f9',
                   marginTop: '20px',
-                  textAlign: 'left' 
+                  textAlign: 'left',
+                  outline: 'none',
+                  cursor: 'pointer'
                 }} 
                 iconSize={12}
                 iconType="circle"
-                formatter={(value) => <span className="text-slate-600 font-medium ml-1 cursor-pointer hover:text-slate-900">{value}</span>}
+                formatter={(value) => <span className="text-slate-600 font-medium ml-1 hover:text-slate-900">{value}</span>}
               />
             </PieChart>
           </ResponsiveContainer>
