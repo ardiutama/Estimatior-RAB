@@ -2,15 +2,14 @@ import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { ProjectDetails, RABResult, BuildingType } from "../types";
 
 export const generateRABEstimate = async (details: ProjectDetails, userApiKey?: string): Promise<RABResult> => {
-  // Prioritaskan API Key dari user input, jika kosong gunakan env var
-  const apiKey = userApiKey || process.env.API_KEY || '';
+  // Prioritize user provided key, fallback to environment variable
+  const apiKey = userApiKey || process.env.API_KEY;
   
   if (!apiKey) {
-    throw new Error("API Key belum diisi. Silakan masukkan Google Gemini API Key Anda.");
+    throw new Error("API Key tidak ditemukan. Mohon masukkan API Key Anda.");
   }
 
-  // Inisialisasi client di dalam fungsi agar bisa menggunakan dynamic key
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: apiKey });
   const modelId = "gemini-2.5-flash";
 
   // Determine the actual building type description to send to AI
