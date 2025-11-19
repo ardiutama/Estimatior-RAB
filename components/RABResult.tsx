@@ -120,7 +120,7 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
         </p>
       </div>
 
-      {/* Table Details - POSISI DI ATAS */}
+      {/* Table Details - POSISI DI ATAS (Full Width) */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <h4 className="font-semibold text-slate-800">Rincian Anggaran Biaya</h4>
@@ -212,7 +212,7 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
               </Pie>
               
               <Legend 
-                onMouseEnter={(_, index) => setActiveIndex(index)} // Interaksi Legenda ke Chart
+                onMouseEnter={(_, index) => setActiveIndex(index)} 
                 layout="horizontal" 
                 verticalAlign="bottom" 
                 align="center"
