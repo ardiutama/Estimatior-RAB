@@ -14,7 +14,7 @@ function App() {
 
   const handleFormSubmit = async (details: ProjectDetails) => {
     if (!userApiKey && !process.env.API_KEY) {
-       setError("API Key wajib diisi. Harap masukkan Google Gemini API Key Anda pada kolom di atas.");
+       setError("API Key wajib diisi. Harap masukkan API Key Anda pada kolom di atas.");
        window.scrollTo({ top: 0, behavior: 'smooth' });
        return;
     }
@@ -62,18 +62,17 @@ function App() {
           <div className="mb-8 bg-white p-4 rounded-xl border border-slate-200 shadow-sm max-w-3xl mx-auto">
             <div className="flex items-center gap-2 mb-2">
                 <Key className="w-4 h-4 text-blue-600" />
-                <label className="text-sm font-semibold text-slate-700">Google Gemini API Key</label>
+                <label className="text-sm font-semibold text-slate-700">API Key</label>
             </div>
             <input 
                 type="password" 
                 value={userApiKey}
                 onChange={(e) => setUserApiKey(e.target.value)}
-                placeholder="Masukkan API Key Anda (AI Studio)..."
+                placeholder="Masukkan API Key Anda..."
                 className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-slate-800 text-sm"
             />
             <p className="text-xs text-slate-400 mt-2">
-                *API Key Anda aman dan hanya digunakan untuk sesi ini (tidak disimpan di server kami). 
-                Dapatkan key gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Google AI Studio</a>.
+                *API Key Anda aman dan hanya digunakan untuk sesi ini (tidak disimpan di server kami).
             </p>
           </div>
         )}
