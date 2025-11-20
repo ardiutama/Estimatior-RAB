@@ -48,9 +48,6 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
-    // PERBAIKAN: Logika khusus untuk input angka
-    // Jika value kosong string "", set state ke 0.
-    // Ini memungkinkan user menghapus semua angka di field.
     if (name === 'landArea' || name === 'buildingArea' || name === 'floors') {
       setFormData(prev => ({
         ...prev,
@@ -131,7 +128,6 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
               min="0"
               required
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-slate-800"
-              // PERBAIKAN: Jika nilai 0, render string kosong '' agar bisa di-backspace
               value={formData.landArea || ''}
               onChange={handleChange}
             />
@@ -145,7 +141,6 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
               min="0"
               required
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-slate-800"
-              // PERBAIKAN
               value={formData.buildingArea || ''}
               onChange={handleChange}
             />
@@ -160,7 +155,6 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
               max="10"
               required
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-slate-800"
-              // PERBAIKAN
               value={formData.floors || ''}
               onChange={handleChange}
             />
@@ -183,7 +177,6 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
                 ))}
               </select>
               
-              {/* Conditional Input for 'Other' */}
               {formData.buildingType === BuildingType.OTHER && (
                 <div className="animate-fade-in">
                   <input
@@ -216,7 +209,6 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
           </div>
         </div>
 
-        {/* Catatan & Saran */}
         <div className="space-y-3">
             <div className="flex justify-between items-end">
                 <label className="block text-sm font-medium text-slate-700">Catatan Teknis (Opsional)</label>
@@ -230,7 +222,6 @@ export const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => 
               onChange={handleChange}
             />
             
-            {/* Suggestion Chips */}
             <div className="space-y-2">
                 <p className="text-xs text-slate-500 font-medium">Klik untuk menambahkan saran:</p>
                 <div className="flex flex-wrap gap-2">

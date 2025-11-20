@@ -1,6 +1,16 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { RABResult } from '../types';
-import { PieChart, Pie, Cell, ResponsiveContainer, Sector, Legend } from 'recharts';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Cell,
+  LabelList
+} from 'recharts';
 import { Download, RefreshCw, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -19,13 +29,21 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+const formatCompactCurrency = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    notation: "compact",
+    compactDisplay: "short",
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 1,
+  }).format(amount);
+};
+
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#8B5CF6', '#0EA5E9', '#D946EF'];
 
-// Helper untuk mengkonversi Romawi ke Angka untuk sorting
 const getRomanValue = (str: string): number => {
-  // Ambil kata pertama yang diakhiri titik, misal "IV." dari "IV. Pekerjaan Dinding"
   const match = str.match(/^([XIV]+)\./); 
-  if (!match) return 999; // Jika tidak ada romawi, taruh di akhir
+  if (!match) return 999;
   
   const roman = match[1];
   const map: Record<string, number> = {
@@ -37,74 +55,40 @@ const getRomanValue = (str: string): number => {
   return map[roman] || 999;
 };
 
-// Komponen Custom untuk Render Bagian Tengah & Efek Hover
-const renderActiveShape = (props: any) => {
-  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
-
-  return (
-    <g>
-      {/* Teks Tengah Dinamis */}
-      <text x={cx} y={cy - 20} dy={8} textAnchor="middle" fill="#64748b" className="text-[10px] font-medium uppercase tracking-wider">
-        {payload.name.length > 25 ? `${payload.name.substring(0, 25)}...` : payload.name}
-      </text>
-      <text x={cx} y={cy + 5} dy={8} textAnchor="middle" fill="#1e293b" className="text-2xl font-bold">
-        {`${(percent * 100).toFixed(1)}%`}
-      </text>
-      <text x={cx} y={cy + 30} dy={8} textAnchor="middle" fill="#334155" className="text-xs font-mono font-semibold">
-        {formatCurrency(value)}
-      </text>
-
-      {/* Highlight Sektor Utama */}
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={outerRadius + 6} // Efek Membesar
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-        className="drop-shadow-md filter"
-      />
-      {/* Ring Dalam Dekoratif */}
-      <Sector
-        cx={cx}
-        cy={cy}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        innerRadius={innerRadius - 8}
-        outerRadius={innerRadius - 4}
-        fill={fill}
-        fillOpacity={0.6}
-      />
-    </g>
-  );
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-3 border border-slate-200 shadow-lg rounded-lg">
+        <p className="text-xs font-bold text-slate-700 mb-1">{label}</p>
+        <p className="text-sm font-mono text-blue-600 font-semibold">
+          {formatCurrency(payload[0].value)}
+        </p>
+      </div>
+    );
+  }
+  return null;
 };
 
 export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset }) => {
-  const [activeIndex, setActiveIndex] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // LOGIKA SORTING: Mengurutkan kategori berdasarkan angka Romawi (I, II, III...)
-  // Menggunakan useMemo agar tidak dihitung ulang setiap render kecuali data berubah
   const sortedCategories = useMemo(() => {
     return [...result.categories].sort((a, b) => {
       return getRomanValue(a.categoryName) - getRomanValue(b.categoryName);
     });
   }, [result.categories]);
 
-  // Derived calculations based on SORTED categories
   const constructionCost = sortedCategories.reduce((acc, curr) => acc + curr.subtotal, 0);
   const ppnAmount = result.grandTotal - constructionCost;
   
-  // Gunakan sortedCategories untuk Chart agar urutannya sesuai Tabel
   const chartData = sortedCategories.map(cat => ({
     name: cat.categoryName,
+    shortName: cat.categoryName.length > 25 ? cat.categoryName.substring(0, 25) + '...' : cat.categoryName,
+    fullName: cat.categoryName,
     value: cat.subtotal
   }));
 
-  const onPieEnter = useCallback((_: any, index: number) => {
-    setActiveIndex(index);
-  }, []);
+  const dynamicHeight = Math.max(500, chartData.length * 60);
 
   const handleDownloadPDF = () => {
     setIsDownloading(true);
@@ -113,18 +97,16 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
       const pageWidth = doc.internal.pageSize.getWidth();
       const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
-      // --- Header ---
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
-      doc.setTextColor(30, 41, 59); // Slate-800
+      doc.setTextColor(30, 41, 59);
       doc.text("RENCANA ANGGARAN BIAYA (RAB)", pageWidth / 2, 20, { align: "center" });
       
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 116, 139); // Slate-500
+      doc.setTextColor(100, 116, 139);
       doc.text(`Estimasi Proyek Konstruksi • Dibuat: ${today}`, pageWidth / 2, 26, { align: "center" });
 
-      // --- Summary Box ---
       doc.setDrawColor(226, 232, 240);
       doc.setFillColor(248, 250, 252);
       doc.roundedRect(14, 35, pageWidth - 28, 25, 3, 3, "FD");
@@ -140,12 +122,9 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
       doc.text(result.estimatedDuration, 20, 52);
       doc.text(formatCurrency(result.grandTotal), pageWidth - 80, 52);
 
-      // --- Data Table ---
       const tableBody: any[] = [];
 
-      // Gunakan sortedCategories agar PDF juga urut
       sortedCategories.forEach((cat) => {
-        // Row Header Kategori (Bold & Grey Background)
         tableBody.push([
           { 
             content: cat.categoryName, 
@@ -154,7 +133,6 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
           }
         ]);
 
-        // Row Items
         cat.items.forEach((item) => {
           tableBody.push([
             item.description,
@@ -165,14 +143,12 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
           ]);
         });
 
-        // Row Subtotal Kategori
         tableBody.push([
           { content: 'Subtotal', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
           { content: formatCurrency(cat.subtotal), styles: { halign: 'right', fontStyle: 'bold' } },
         ]);
       });
 
-      // Footer Rows (Biaya Fisik, PPN, Grand Total)
       tableBody.push(
         [
           { content: 'Biaya Konstruksi Fisik', colSpan: 4, styles: { halign: 'right' } },
@@ -194,7 +170,7 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
         body: tableBody,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 3 },
-        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' }, // Blue Header
+        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
         columnStyles: {
           0: { cellWidth: 'auto' },
           1: { cellWidth: 15 },
@@ -204,7 +180,6 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
         },
         margin: { top: 70 },
         didDrawPage: (data) => {
-           // Footer Disclaimer pada setiap halaman
            const pageHeight = doc.internal.pageSize.height;
            doc.setFontSize(8);
            doc.setTextColor(148, 163, 184);
@@ -213,7 +188,6 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
         }
       });
 
-      // Save PDF
       doc.save(`RAB_Estimasi_${new Date().getTime()}.pdf`);
 
     } catch (error) {
@@ -267,7 +241,7 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
         </p>
       </div>
 
-      {/* Table Details - POSISI DI ATAS (Full Width) */}
+      {/* Table Details */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <h4 className="font-semibold text-slate-800">Rincian Anggaran Biaya</h4>
@@ -293,7 +267,6 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {/* RENDER MENGGUNAKAN SORTED CATEGORIES */}
               {sortedCategories.map((category, catIndex) => (
                 <React.Fragment key={catIndex}>
                   <tr className="bg-slate-50">
@@ -336,59 +309,46 @@ export const RABResultView: React.FC<RABResultViewProps> = ({ result, onReset })
         </div>
       </div>
 
-      {/* Chart Section - INTERAKTIF & DI BAWAH */}
+      {/* HORIZONTAL BAR CHART */}
       <div 
         className="bg-white p-6 pt-8 rounded-xl border border-slate-200 shadow-sm flex flex-col" 
         style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} 
       >
-        <div className="mb-2 text-center">
+        <div className="mb-4 text-center">
           <h4 className="font-bold text-slate-800">Proporsi Biaya Pekerjaan</h4>
-          <p className="text-xs text-slate-400 mt-1">Arahkan kursor atau klik legenda untuk melihat detail</p>
+          <p className="text-xs text-slate-400 mt-1">Diagram batang perbandingan biaya per kategori</p>
         </div>
         
-        <div className="w-full h-[450px] mt-4">
+        <div style={{ width: '100%', height: dynamicHeight }}>
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ top: 0, left: 0, right: 0, bottom: 0 }} style={{ outline: 'none' }}>
-              <Pie
-                activeIndex={activeIndex}
-                activeShape={renderActiveShape}
-                data={chartData}
-                cx="50%"
-                cy="40%"
-                innerRadius={85}
-                outerRadius={115}
-                paddingAngle={3}
-                dataKey="value"
-                onMouseEnter={onPieEnter}
-                onClick={(_, index) => setActiveIndex(index)} // Support Tap on Pie
-                animationDuration={800}
-                style={{ outline: 'none', cursor: 'pointer' }}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} style={{ outline: 'none' }} />
-                ))}
-              </Pie>
-              
-              <Legend 
-                onClick={(e) => setActiveIndex(e.index)} // Support Click Legend
-                onMouseEnter={(_, index) => setActiveIndex(index)} 
-                layout="horizontal" 
-                verticalAlign="bottom" 
-                align="left" 
-                wrapperStyle={{ 
-                  fontSize: '11px', 
-                  paddingTop: '24px', 
-                  borderTop: '1px solid #f1f5f9',
-                  marginTop: '20px',
-                  textAlign: 'left',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }} 
-                iconSize={12}
-                iconType="circle"
-                formatter={(value) => <span className="text-slate-600 font-medium ml-1 hover:text-slate-900">{value}</span>}
+            <BarChart
+              layout="vertical"
+              data={chartData}
+              margin={{ top: 5, right: 50, left: 10, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+              <XAxis type="number" hide />
+              <YAxis 
+                dataKey="shortName" 
+                type="category" 
+                width={120} 
+                tick={{ fontSize: 11, fill: '#475569' }}
+                interval={0}
               />
-            </PieChart>
+              <Tooltip content={<CustomTooltip />} cursor={{fill: '#f8fafc'}} />
+              
+              <Bar dataKey="value" barSize={28} radius={[0, 4, 4, 0]}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+                <LabelList 
+                  dataKey="value" 
+                  position="right" 
+                  formatter={formatCompactCurrency}
+                  style={{ fontSize: '11px', fill: '#64748b', fontWeight: 500 }} 
+                />
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
